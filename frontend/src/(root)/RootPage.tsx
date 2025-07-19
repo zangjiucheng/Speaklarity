@@ -1,11 +1,20 @@
 import {LineShadowText} from '../components/magicui/line-shadow-text.tsx';
 import {AnimatedGridPattern} from '../components/magicui/animated-grid-pattern.tsx';
 import {InteractiveHoverButton} from '../components/magicui/interactive-hover-button.tsx';
+import {useNavigate} from 'react-router-dom';
+import {motion} from 'framer-motion';
 
 
 export const RootPage = () => {
+    const nav = useNavigate();
     return (
-        <div className="relative w-screen h-screen flex flex-col items-center justify-center overflow-hidden">
+        <motion.div
+            initial={{opacity: 0}}
+            animate={{opacity: 1}}
+            exit={{opacity: 0, scale: 1.1, translateX: -100}}
+            transition={{duration: 0.15, ease: 'easeInOut'}}
+            
+            className="relative w-screen h-screen flex flex-col items-center justify-center overflow-hidden">
             <AnimatedGridPattern
                 numSquares={60}
                 maxOpacity={0.8}
@@ -24,12 +33,14 @@ export const RootPage = () => {
                     through personalized feedback and guided practice.
                 </p>
                 <div>
-                    <InteractiveHoverButton className="drop-shadow">
+                    <InteractiveHoverButton className="drop-shadow" onClick={() => {
+                        nav('/main');
+                    }}>
                         Get Started
                     </InteractiveHoverButton>
                 </div>
             </div>
         
-        </div>
+        </motion.div>
     );
 };
