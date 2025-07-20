@@ -1,0 +1,13 @@
+Flask==3.1.1
+gTTS==2.5.4
+librosa=0.11.0
+matplotlib==3.10.3
+onnxruntime==1.22.1
+openai==1.97.0
+openai-whisper==20250625
+torch
+torchaudio
+torchvision
+Werkzeug==3.1.3
+whisper
+whisper-timestamped
