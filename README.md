@@ -2,6 +2,14 @@
 
 **SPEAKLARITY** is a cutting-edge AI platform for accent correction and grammar analysis, leveraging advanced speech and language models for precise, actionable feedback. The system's accent check feature utilizes OpenAI's Whisper model for robust audio-to-text alignment, then extracts word-level embeddings using Microsoft's WavLM (see [WavLM: Large-Scale Self-Supervised Pre-Training for Full Stack Speech Processing](https://arxiv.org/abs/2110.13900)). By comparing user speech embeddings to native references, Speaklarity delivers detailed, word-by-word pronunciation scoring and alignment. To help users correct their accent, the platform uses gTTS to generate native-like audio for each word or sentence after prediction, enabling direct auditory feedback and practice. For grammar analysis, each sentence is evaluated using Google's Gemini API, providing context-aware corrections and linguistic feedback. This multi-model approach—acoustic alignment with Whisper and WavLM for pronunciation, gTTS for generative correction, and Gemini-powered grammar checking—enables comprehensive, real-time assessment for language learners and professionals. For more on the underlying models, see [Whisper: Robust Speech Recognition via Large-Scale Weak Supervision](https://arxiv.org/abs/2212.04356) and [WavLM](https://arxiv.org/abs/2110.13900).
 
+
+![Speaklarity Logo](assets/speaklarity_logo.png)
+
+## Conversation Analysis
+
+![Conversation Flow](assets/conversation_analysis.png)
+
+
 ![word_pronun.png](assets/word_pronun.png)
 
 ## Features
