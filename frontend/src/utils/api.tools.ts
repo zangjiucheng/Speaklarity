@@ -141,3 +141,25 @@ export async function listAudio(): Promise<{ success: boolean; reason?: string; 
         };
     }
 }
+
+export async function downloadNativeReference(convId: string, sentenceId: number): Promise<{
+    success: boolean;
+    reason?: string;
+    data?: Blob;
+}> {
+    const url = `${API_BASE_URL}/native-reference/${convId}/${sentenceId}`;
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            const errorText = await response.text();
+            return {success: false, reason: `API error: ${response.status} ${response.statusText} - ${errorText}`};
+        }
+        const blob = await response.blob();
+        if (blob.type !== 'audio/wav' && blob.type !== 'audio/x-wav') {
+            return {success: false, reason: `Unexpected MIME type: ${blob.type}`};
+        }
+        return {success: true, data: blob};
+    } catch (error: any) {
+        return {success: false, reason: error?.message || 'Unknown error'};
+    }
+}
