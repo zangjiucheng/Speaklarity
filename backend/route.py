@@ -144,6 +144,28 @@ def download_conversation(conv_id: str):
         abort(404, "Audio file not found")
     return send_from_directory(folder, stored_file, as_attachment=True, mimetype="audio/wav")
 
+@app.route("/native-reference/<conv_id>/<sentence_id>", methods=["GET"])
+def get_native_reference(conv_id: str, sentence_id: int):
+    """
+    Serve the native reference audio for a specific sentence in a conversation.
+    
+    Args:
+        conv_id (str): Unique identifier for the conversation.
+        sentence_id (int): Index of the sentence to retrieve the native reference for.
+    
+    Returns:
+        Response: The native reference audio file if found, 404 otherwise.
+    """
+    folder = UPLOAD_ROOT / conv_id / "sentences"
+    if not folder.exists():
+        abort(404, "Conversation ID not found")
+    
+    native_ref_file = folder / f"sentence_{sentence_id}_native.wav"
+    if not native_ref_file.exists():
+        abort(404, "Native reference audio not found")
+    
+    return send_from_directory(folder, native_ref_file.name, as_attachment=True, mimetype="audio/wav")
+
 @app.route("/conv/<conv_id>", methods=["GET"])
 def get_conversation(conv_id: str):
     folder = UPLOAD_ROOT / conv_id
