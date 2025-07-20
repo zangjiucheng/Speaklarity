@@ -1,5 +1,6 @@
 from werkzeug.datastructures.file_storage import FileStorage
 from flask import Flask, jsonify, send_from_directory, request, abort
+from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import hashlib, json, os, uuid
 from pathlib import Path
@@ -8,6 +9,7 @@ import time
 
 from process import pipeline
 from util import save_audio_to_wav
+import threading
 
 UPLOAD_ROOT = Path("data")
 ALLOWED_EXT = {".wav"}
@@ -15,6 +17,7 @@ MAX_BYTES   = 25 * 1024 * 1024          # 25 MB per file
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = MAX_BYTES
+CORS(app)
 
 
 # ---------- helpers ---------------------------------------------------------
@@ -69,7 +72,8 @@ def upload_conversation():
 
     save_metadata(folder, metadata)
 
-    pipeline(cid)  # process the audio file, cid: conversation ID
+    # Run pipeline in a background thread so it doesn't block the request
+    threading.Thread(target=pipeline, args=(cid,), daemon=True).start()
 
     return metadata, 201
 
@@ -81,7 +85,7 @@ def list_audio():
         meta_file = child / "index.json"
         if meta_file.exists():
             meta = json.loads(meta_file.read_text())
-            out.append({"audio_id": idx, **meta})
+            out.append({"conversation_id": meta["conversation_id"]})
     return out
 
 
