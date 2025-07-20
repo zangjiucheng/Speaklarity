@@ -1,3 +1,5 @@
+import type {ProcessingState, RecordingAnalysis} from './api.types.ts';
+
 export const API_BASE_URL = 'http://100.66.178.24:9000';
 
 export async function callAPI(
@@ -27,6 +29,53 @@ export async function callAPI(
         return {success: false, reason: error?.message || 'Unknown error'};
     }
 }
+
+export async function downloadConversationWav(convId: string): Promise<{
+    success: boolean;
+    reason?: string;
+    data?: Blob
+}> {
+    const url = `${API_BASE_URL}/download-conversation/${convId}`;
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            const errorText = await response.text();
+            return {success: false, reason: `API error: ${response.status} ${response.statusText} - ${errorText}`};
+        }
+        const blob = await response.blob();
+        if (blob.type !== 'audio/wav' && blob.type !== 'audio/x-wav') {
+            return {success: false, reason: `Unexpected MIME type: ${blob.type}`};
+        }
+        return {success: true, data: blob};
+    } catch (error: any) {
+        return {success: false, reason: error?.message || 'Unknown error'};
+    }
+}
+
+// Import the RecordingAnalysis type if it's defined in another file
+// import type { RecordingAnalysis } from './recording.types.ts';
+
+export async function fetchRecordingAnalysis(
+    conv_id: string
+): Promise<{ success: boolean; data?: RecordingAnalysis; reason?: string }> {
+    const endpoint = `/conv/${conv_id}`;
+    const response = await callAPI(endpoint, 'GET');
+    
+    if (!response.success) {
+        return {success: false, reason: response.reason};
+    }
+    
+    try {
+        const data = response.data as RecordingAnalysis;
+        return {success: true, data};
+    } catch (e: any) {
+        return {
+            success: false,
+            reason: 'Failed to parse response as RecordingAnalysis',
+        };
+    }
+}
+
 
 export async function uploadConversation(
     rawData: ArrayBuffer,
@@ -60,5 +109,35 @@ export async function uploadConversation(
         return {success: true, data};
     } catch (error: any) {
         return {success: false, reason: error?.message || 'Unknown error'};
+    }
+}
+
+
+export async function listAudio(): Promise<{ success: boolean; reason?: string; data?: ProcessingState[] }> {
+    const url = `${API_BASE_URL}/list-audio`;
+    
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+            },
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            return {
+                success: false,
+                reason: `API error: ${response.status} ${response.statusText} - ${errorText}`,
+            };
+        }
+        
+        const data: ProcessingState[] = await response.json();
+        return {success: true, data};
+    } catch (error: any) {
+        return {
+            success: false,
+            reason: error?.message || 'Unknown error',
+        };
     }
 }

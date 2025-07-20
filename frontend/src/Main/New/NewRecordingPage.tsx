@@ -5,6 +5,8 @@ import {toast} from 'react-hot-toast';
 
 export const NewRecordingPage: React.FC = () => {
     const [isRecording, setIsRecording] = useState(false);
+    const [recordingTime, setRecordingTime] = useState(0); // in ms
+    const timerRef = useRef<any | null>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
     
@@ -36,6 +38,11 @@ export const NewRecordingPage: React.FC = () => {
                 mediaRecorderRef.current = mediaRecorder;
                 mediaRecorder.start();
                 setIsRecording(true);
+                setRecordingTime(0);
+                const start = Date.now();
+                timerRef.current = setInterval(() => {
+                    setRecordingTime(Date.now() - start);
+                }, 10);
             } catch (err) {
                 toast.error('Could not start recording: ' + err);
             }
@@ -43,6 +50,10 @@ export const NewRecordingPage: React.FC = () => {
             if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
                 mediaRecorderRef.current.stop();
                 setIsRecording(false);
+                if (timerRef.current) {
+                    clearInterval(timerRef.current);
+                    timerRef.current = null;
+                }
             }
         }
     };
@@ -101,7 +112,12 @@ export const NewRecordingPage: React.FC = () => {
     
     return (
         <div className="flex flex-col h-full">
-            <div className="pt-8 pb-4 px-6 text-2xl font-bold text-center">New Recording</div>
+            <div className={'pt-8 pb-4 px-6 text-2xl font-bold text-center ' + (isRecording ? 'font-mono' : '')}
+                 style={{color: isRecording ? '#f31260' : undefined}}>
+                {isRecording
+                    ? `Recording ${Math.floor(recordingTime / 1000)}:${(recordingTime % 1000).toString().padStart(3, '0')}`
+                    : 'New Recording'}
+            </div>
             <div className="flex-1 flex items-center justify-center">
                 <AudioVisualizer backgroundColor="white" waveformColor={isRecording ? '#f31260' : '#a3a3a3'}/>
             </div>

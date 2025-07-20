@@ -1,58 +1,129 @@
-import React, {useState, useMemo} from 'react';
+import React, {useState, useMemo, useEffect} from 'react';
 import {motion} from 'framer-motion';
 import {AnimatedGridPattern} from '../components/magicui/animated-grid-pattern.tsx';
-import {Divider, Input, Link, Progress, ScrollShadow, Spinner} from '@heroui/react';
-import {IoSearch} from 'react-icons/io5';
-import type {ProcessingState} from '../utils/api.types.ts';
+import {Divider, Input, Link, Progress, ScrollShadow, Spinner, Tooltip} from '@heroui/react';
+import {IoCheckmarkCircleOutline, IoSearch} from 'react-icons/io5';
+import type {ProcessingState, RecordingAnalysis} from '../utils/api.types.ts';
 import {IoMdAddCircleOutline} from 'react-icons/io';
 import {NewRecordingPage} from './New/NewRecordingPage.tsx';
+import {downloadConversationWav, fetchRecordingAnalysis, listAudio} from '../utils/api.tools.ts';
+import {ConversationPage} from './ConversationPage.tsx';
 
-const TaskItem = React.memo(function TaskItem({task}: { task: { id: number, title: string, state: ProcessingState } }) {
-    return (
-        <div className="p-3 mb-2 rounded-lg bg-default-100 hover:bg-default-200 transition-colors">
-            <p className="text-sm font-semibold">{task.title}</p>
-            <Divider className="my-2"/>
-            <p className="text-xs flex justify-between opacity-50">
+
+const TaskItem = React.memo(function TaskItem({task, onClick}: {
+    task: { id: string, summary: string, state: ProcessingState },
+    onClick: () => void
+}) {
+    return <Tooltip color="foreground" showArrow placement="right" delay={1000} size={'sm'} content={
+        <div className="px-1 py-2 max-w-[300px]">
+            {task.summary.length > 128 ? task.summary.substring(0, 128) + '...' : task.summary}
+        </div>
+    }>
+        <div
+            onClick={onClick}
+            className="p-3 mb-2 rounded-lg bg-default-100 hover:bg-default-200 transition-colors hover:cursor-pointer">
+            <p className="text-sm font-semibold truncate w-full max-w-full flex items-center">
+                {/* Show checkmark if finished processing */}
+                {
+                    task.state.total_actions === task.state.actions_done &&
+                    <div>
+                        <IoCheckmarkCircleOutline size={18} className="mr-1"/>
+                    </div>
+                }
+                <span className="truncate">
+                    {task.summary}
+                </span>
+            </p>
+            {
+                task.state.total_actions !== task.state.actions_done && <>
+                    <Divider className="my-2"/>
+                    <p className="text-xs flex justify-between opacity-50">
                 <span className="italic">{task.state.action}
                     <span className="inline-flex -translate-x-1 -translate-y-0.5 h-2 w-2">
                         <Spinner className="scale-35" variant="dots"/>
                     </span>
                 </span>
-                <span>{task.state.actions_done}/{task.state.total_actions}</span>
-            </p>
-            <Progress className="opacity-90 mt-1" color={'success'}
-                      value={Math.round(task.state.actions_done / task.state.total_actions * 100)} size="sm"/>
+                        <span>{task.state.actions_done}/{task.state.total_actions}</span>
+                    </p>
+                    <Progress className="opacity-90 mt-1" color={'success'}
+                              value={Math.round(task.state.actions_done / task.state.total_actions * 100)} size="sm"/>
+                </>
+            }
         </div>
-    );
+    
+    </Tooltip>;
+    
 });
 
-// Move tasks outside the component to keep reference stable
-const tasks: {
-    id: number,
-    title: string,
-    state: ProcessingState
-}[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(task => {
-    return {
-        id: task,
-        title: `Analysis Task ${task}`,
-        state: {
-            action: 'Analyzing',
-            total_actions: 10,
-            actions_done: Math.floor(Math.random() * 5 + 3)
-        }
-    };
-});
 
 export const MainWrapper = () => {
     const [search, setSearch] = useState('');
-    const [selected, setSelected] = useState<number | 'new'>('new');
+    const [selected, setSelected] = useState<string | null>(null);
+    const [tasks, setTasks] = useState<{
+        id: string;
+        summary: string;
+        state: ProcessingState;
+    }[]>([]);
+    const [convAnalysis, setConvAnalysis] = useState<RecordingAnalysis | undefined>(undefined);
+    const [audioUrl, setAudioUrl] = useState<string | undefined>(undefined);
+    
+    // Fetch tasks from the API when the component mounts
+    useEffect(() => {
+        const fetchTasks = async () => {
+            const response = await listAudio();
+            if (response.success && response.data) {
+                setTasks(() => {
+                    return (response.data as ProcessingState[]).map((task: ProcessingState) => ({
+                        id: task.id,
+                        summary: task.summary || (task.actions_done === task.total_actions ? 'Untitled Task' : 'Processing...'),
+                        state: {
+                            id: task.id,
+                            summary: task.summary || 'Untitled Task',
+                            action: task.action || 'Processing',
+                            total_actions: task.total_actions || 1,
+                            actions_done: task.actions_done || 0
+                        }
+                    }));
+                });
+            } else {
+                console.error('Failed to fetch tasks:', response.reason);
+            }
+        };
+        fetchTasks();
+        const interval = setInterval(() => {
+            fetchTasks();
+        }, 2500);
+        return () => {
+            clearInterval(interval);
+        };
+    }, []);
     
     // Memoize filteredTasks to avoid unnecessary re-renders
     const filteredTasks = useMemo(() =>
         tasks.filter(task =>
-            task.title.toLowerCase().includes(search.toLowerCase())
+            task.summary.toLowerCase().includes(search.toLowerCase())
         ), [tasks, search]
     );
+    
+    useEffect(() => {
+        if (typeof selected === 'string') {
+            setConvAnalysis(undefined);
+            setAudioUrl(undefined);
+            fetchRecordingAnalysis(selected).then(result => {
+                if (result.success) {
+                    setConvAnalysis(result.data);
+                    downloadConversationWav(selected).then(result => {
+                        if (result.success && result.data) {
+                            const url = URL.createObjectURL(result.data);
+                            setAudioUrl(url);
+                        } else {
+                            console.error('Failed to download conversation WAV:', result.reason);
+                        }
+                    });
+                }
+            });
+        }
+    }, [selected]);
     
     return (
         <motion.div
@@ -100,10 +171,10 @@ export const MainWrapper = () => {
                         <p className="mt-3 opacity-60 text-sm flex items-center justify-between">
                             <span> {search.trim() ? 'Search results' : 'All analyses'} ({filteredTasks.length})</span>
                             {
-                                selected !== 'new' && <Link
+                                selected !== null && <Link
                                     className="text-xs flex items-center text-blue-600 hover:cursor-pointer hover:underline"
                                     onPress={() => {
-                                        setSelected('new');
+                                        setSelected(null);
                                     }}
                                 >
                                 <span className="sm font-semibold"><IoMdAddCircleOutline size={16}
@@ -114,7 +185,9 @@ export const MainWrapper = () => {
                     </div>
                     <ScrollShadow className="flex-1 min-h-0 mt-2 px-4 mx-2">
                         {filteredTasks.map(task => (
-                            <TaskItem key={task.id} task={task}/>
+                            <TaskItem key={task.id} task={task} onClick={() => {
+                                setSelected(task.id);
+                            }}/>
                         ))}
                         <div className="h-6"></div>
                     </ScrollShadow>
@@ -122,9 +195,13 @@ export const MainWrapper = () => {
                 {/* Right panel for nested routes */}
                 <div className="flex-1 h-full overflow-auto">
                     {
-                        selected === 'new' && (
+                        selected === null && (
                             <NewRecordingPage/>
                         )
+                    }
+                    {
+                        typeof selected === 'string' &&
+                        <ConversationPage audioUrl={audioUrl} recAnalysis={convAnalysis}/>
                     }
                 </div>
             </motion.div>
