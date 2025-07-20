@@ -19,7 +19,7 @@ def score_sentence(
     the user's transcribed text via TTS (chosen by `tts_engine`).
     Returns (word_scores, sentence_score).
     """
-    # 1️⃣  Whisper forced alignment
+    # Whisper forced alignment
     result = whisper_model.transcribe(
         user_audio_path, word_timestamps=True, language="en",
         condition_on_previous_text=False,
@@ -30,7 +30,7 @@ def score_sentence(
     ]
     full_text = " ".join(w["word"] for w in words)
 
-    # 2️⃣  Produce native reference if needed
+    # Produce native reference if needed
     if native_audio_path is None:
         # NOTE: we could use a temp file here, but we want to keep the native audio
         # fp = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
@@ -38,7 +38,7 @@ def score_sentence(
         native_audio_path = user_audio_path.replace(".wav", "_native.wav")
         util.synthesize_native(full_text, native_audio_path, engine=tts_engine)
 
-    # 3️⃣  Load + resample both clips
+    # Load + resample both clips
     def load_mono(path):
         wav, s = torchaudio.load(path)
         return torchaudio.transforms.Resample(s, sr)(wav).mean(0, keepdim=True)
@@ -46,7 +46,7 @@ def score_sentence(
     user_wav = load_mono(user_audio_path)
     native_wav = load_mono(native_audio_path)
 
-    # 4️⃣  WavLM embeddings
+    # WavLM embeddings
     wavlm = WAVLM_LARGE.get_model().to(device).eval()
     @torch.no_grad()
     def emb(w):  # mean‑pooled last‑layer embedding
@@ -59,7 +59,7 @@ def score_sentence(
     def slice_word(wav, start, end):
         return wav[:, int(start * sr): int(end * sr)]
 
-    # 5️⃣  Score words
+    # Score words
     word_scores = []
     for w in words:
         clip = slice_word(user_wav, w["start"], w["end"])
@@ -69,21 +69,27 @@ def score_sentence(
         word_scores.append({"word": w["word"], "score": s})
     sentence_score = float(torch.tensor([ws["score"] for ws in word_scores]).mean())
 
-    # 6️⃣  optional viz (same as before) …
+    # Improved visualization
     if visualize and word_scores:
         labs, vals = zip(*[(w["word"], w["score"]) for w in word_scores])
-        colors = ["green" if v >= .95 else "orange" if v >= .85 else "red" for v in vals]
-        fig, ax = plt.subplots(figsize=(12, 4))
-        ax.bar(labs, vals, color=colors)
-        ax.axhline(.85, ls="--", c="gray", label="Needs improvement")
-        ax.axhline(.95, ls="--", c="blue", label="Good pronunciation")
+        colors = ["#4CAF50" if v >= .5 else "#FFC107" if v >= .3 else "#F44336" for v in vals]  # better color palette
+        fig, ax = plt.subplots(figsize=(max(8, len(labs)), 4))
+        bars = ax.bar(labs, vals, color=colors, edgecolor="black", linewidth=0.7)
+        ax.axhline(.3, ls="--", c="gray", label="Needs improvement")
+        ax.axhline(.5, ls="--", c="blue", label="Good pronunciation")
         ax.set_ylim(0, 1)
         ax.set_xticks(range(len(labs)))
-        ax.set_xticklabels(labs, rotation=45)
-        ax.set_ylabel("Cosine similarity")
-        ax.set_title("Word‑by‑word pronunciation score")
+        ax.set_xticklabels(labs, rotation=45, ha="right", fontsize=10)
+        ax.set_ylabel("Cosine similarity", fontsize=12)
+        ax.set_title("Word-by-word Pronunciation Score", fontsize=14)
         ax.legend()
         fig.tight_layout()
+
+        # Annotate bars with score values
+        for bar, val in zip(bars, vals):
+            ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.02,
+                    f"{val:.2f}", ha="center", va="bottom", fontsize=9)
+
         plt.show()
 
     # cleanup temp file if we created one
