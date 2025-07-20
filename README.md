@@ -17,69 +17,62 @@
 
 (Developed on macOS Sequoia 15.5, Python 3.12 environment, Node.js 18+)
 
-### Clone the repository:
+1. Clone the repository:
 
-```bash
-git clone https://github.com/zangjiucheng/Speaklarity.git
-cd Speaklarity
-```
+    ```bash
+    git clone https://github.com/zangjiucheng/Speaklarity.git
+    cd Speaklarity
+    ```
 
-### Backend Setup:
+2. Backend Setup:
 
-```bash
-cd backend
+    ```bash
+    cd backend
 
-# Create and activate virtual environment
-python -m venv venv
-# Windows:
-venv\Scripts\activate
-# macOS/Linux:
-source venv/bin/activate
+    # Create and activate virtual environment
+    python -m venv venv
+    # Windows:
+    venv\Scripts\activate
+    # macOS/Linux:
+    source venv/bin/activate
 
-# Install Python dependencies
-pip install -r requirements.txt
+    # Install Python dependencies
+    pip install -r requirements.txt
 
-# Install FFmpeg (required for audio processing)
-# Windows (using winget):
-winget install ffmpeg
-# Or download from https://ffmpeg.org/download.html
-```
+    # Install FFmpeg (required for audio processing)
+    # Windows (using winget):
+    winget install ffmpeg
+    # Or download from https://ffmpeg.org/download.html
+    ```
 
-### Frontend Setup:
+3. Frontend Setup:
 
-```bash
-cd frontend
+    ```bash
+    cd frontend
 
-# Install Node.js dependencies
-npm install
-```
+    # Install Node.js dependencies
+    npm install
+    ```
 
 ## Usage
 
 ### Running the Application
 
 1. **Start the Backend server:**
-```bash
-cd backend
-python -m route
-```
+
+    ```bash
+    cd backend
+    python -m route
+    ```
 
 2. **Start the Frontend development server:**
-```bash
-cd frontend
-npm run dev
-```
+
+    ```bash
+    cd frontend
+    npm run dev
+    ```
 
 3. **Access the web application** at `http://localhost:5173`
-
-### Using the Application
-
-1. **Navigate to the main application** from the landing page
-2. **Click "New Recording"** to start a speech analysis session
-3. **Grant microphone permissions** when prompted
-4. **Press the record button** to start recording your speech
-5. **Press again to stop** recording and automatically upload for analysis
-6. **View your analysis results** and receive personalized feedback
 
 ## API Endpoints
 
@@ -114,15 +107,6 @@ npm run dev
 This project is licensed under the [MIT License](./LICENSE). See the LICENSE file for details.
 
 ## References & Acknowledgements
-
-### Research & Algorithms
-
-Our speech processing and accent analysis capabilities are built upon cutting-edge research in robust speech recognition and large-scale audio processing:
-
-- **Whisper Speech Recognition**: Our platform leverages insights from OpenAI's Whisper model, which demonstrates exceptional performance in multilingual speech recognition through large-scale weak supervision training on 680,000 hours of diverse audio data.
-- Advanced speech processing techniques for accent analysis and pronunciation assessment
-- Natural language processing algorithms for grammar checking and linguistic pattern recognition
-- Real-time audio visualization and processing algorithms
 
 ### Key Research References
 
