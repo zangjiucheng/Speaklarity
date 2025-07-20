@@ -5,8 +5,7 @@ import {Divider, Input, Link, Progress, ScrollShadow, Spinner} from '@heroui/rea
 import {IoSearch} from 'react-icons/io5';
 import type {ProcessingState} from '../utils/api.types.ts';
 import {IoMdAddCircleOutline} from 'react-icons/io';
-import {RecordingButton} from './RecordButton';
-import AudioVisualizer from './New/AudioVisualizer.tsx';
+import {NewRecordingPage} from './New/NewRecordingPage.tsx';
 
 const TaskItem = React.memo(function TaskItem({task}: { task: { id: number, title: string, state: ProcessingState } }) {
     return (
@@ -124,20 +123,7 @@ export const MainWrapper = () => {
                 <div className="flex-1 h-full overflow-auto">
                     {
                         selected === 'new' && (
-                            <div className="flex flex-col h-full">
-                                <div className="pt-8 pb-4 px-6 font-2xl font-bold text-center">New Recording
-                                </div>
-                                <div className="flex-1 flex items-center justify-center">
-                                    {/*<span className="text-gray-400">[ Placeholder for future content ]</span>*/}
-                                    <div className="pb-8 flex justify-center">
-                                        <AudioVisualizer backgroundColor="white" waveformColor="#3c7ecc"/>
-                                    </div>
-                                </div>
-                                <div className="pb-8 flex justify-center">
-                                    <RecordingButton value={false} onValueChange={() => {
-                                    }}/>
-                                </div>
-                            </div>
+                            <NewRecordingPage/>
                         )
                     }
                 </div>
