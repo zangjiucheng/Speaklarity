@@ -88,9 +88,16 @@ def score_accent(conversation_id: str, sr: int = 16000) -> bool:
         for sentence_audio in sentence_audios:
             index, user_audio_path = sentence_audio
             logging.info(f"Scoring sentence {index} with audio {user_audio_path}")
+            # Find the sentence in sentences where s["id"] == index
+            native_txt = ""
+            for s in sentences:
+                if s.get("id") == index:
+                    native_txt = s.get("sentence_text", "")
+                    break
             word_scores, sentence_score = accent_check.score_sentence(
                 user_audio_path=user_audio_path,
                 native_audio_path=None,
+                native_txt=native_txt,
                 sr=sr,
                 tts_engine=TTS_ENGINE,
                 visualize=VISUALIZE,

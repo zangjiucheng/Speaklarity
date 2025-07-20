@@ -33,6 +33,7 @@ def preprocess_wav(path, sr, cutoff=80, target_rms=0.1):
 def score_sentence(
     user_audio_path: str,
     native_audio_path: str | None = None,
+    native_txt: str = "",
     sr: int = 16000,
     tts_engine: str = "gtts",
     visualize: bool = True,
@@ -53,12 +54,11 @@ def score_sentence(
             {"word": w["word"].strip(), "start": w["start"], "end": w["end"]}
             for seg in result["segments"] for w in seg["words"]
         ]
-        full_text = " ".join(w["word"] for w in words)
 
         # Produce native reference if needed
         if native_audio_path is None:
             native_audio_path = user_audio_path.replace(".wav", "_native.wav")
-            util.synthesize_native(full_text, native_audio_path, engine=tts_engine)
+            util.synthesize_native(native_txt, native_audio_path, engine=tts_engine)
 
         # Load, filter, and normalize both clips
         user_wav = preprocess_wav(user_audio_path, sr)
