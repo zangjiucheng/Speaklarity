@@ -10,6 +10,7 @@ import time
 from process import pipeline
 from util import save_audio_to_wav
 import threading
+import shutil
 
 UPLOAD_ROOT = Path("data")
 ALLOWED_EXT = {".wav"}
@@ -34,6 +35,32 @@ def new_conv_folder() -> Path:
 def save_metadata(folder: Path, meta: dict) -> None:
     (folder / "index.json").write_text(json.dumps(meta, indent=2))
 
+def get_summary(text: str, max_length: int = 100) -> str:
+    """
+    Returns a summary of the text, truncated to max_length characters.
+    """
+    if len(text) <= max_length:
+        return text
+    return text[:max_length] + "..."
+
+def map_state(action_id: str) -> tuple[int, int]:
+    """
+    Maps the action ID to a human-readable state.
+    """
+    action_states = {
+        "uploading": 1,
+        "splitting": 2,
+        "scoring": 3,
+        "checking grammar": 4,
+        "finished": 5,
+        "error": 0
+    }
+    
+    current_action = action_states.get(action_id, 0)
+    total_actions = len(action_states) - 1
+    
+    return current_action, total_actions
+
 # ---------- routes ----------------------------------------------------------
 
 @app.route("/")
@@ -43,6 +70,9 @@ def home():
 
 @app.route("/upload-conversation", methods=["POST"])
 def upload_conversation():
+    # FIXME: temporarily disable this endpoint
+    # return jsonify({"message": "This endpoint is not serving now :)"}), 201
+
     file: FileStorage | None = request.files.get("file")
     if not file:
         abort(400, "No file part in the request")
@@ -67,7 +97,8 @@ def upload_conversation():
         "conversation_id": cid,
         "filename": original,
         "sha256": h,
-        "uploaded_at": datetime.now(timezone.utc).isoformat()
+        "uploaded_at": datetime.now(timezone.utc).isoformat(),
+        "action": "uploading...",
     }
 
     save_metadata(folder, metadata)
@@ -85,8 +116,24 @@ def list_audio():
         meta_file = child / "index.json"
         if meta_file.exists():
             meta = json.loads(meta_file.read_text())
-            out.append({"conversation_id": meta["conversation_id"]})
+            # summary = save_metadata_from_json(meta.get("sentence_text", ""))
+            summary = ""
+            action = meta.get("action", "error")
+            current_action, total_actions = map_state(action) 
+            out.append({"action": action, "total_actions": total_actions,
+                        "actions_done": current_action, "conversation_id": meta["conversation_id"],})
     return out
+
+@app.route("/delete-conversation/<conv_id>", methods=["DELETE"])
+def delete_conversation(conv_id: str):
+    folder = UPLOAD_ROOT / conv_id
+    if not folder.exists():
+        abort(404, "Conversation ID not found")
+    
+    # Remove the entire conversation folder and its contents recursively
+    shutil.rmtree(folder)
+
+    return jsonify({"message": "Conversation deleted successfully"}), 200
 
 
 @app.route("/raw/<conv_id>")

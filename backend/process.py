@@ -31,10 +31,14 @@ def split_conversation_to_sentences(conversation_id: str) -> bool:
     """
     conversation_path = Path("data") / conversation_id / f"conversation_{conversation_id}.wav"
     try:
+        index_path = Path("data") / conversation_id / "index.json"
+        with open(index_path, "r") as f:
+            index_data = json.load(f)
+        index_data["action"] = "splitting"
+        util.save_info_to_file(str(index_path), index_data)
         audio_info = align_text.load_wav_info(str(conversation_path))
         logging.info(f"Audio length: {audio_info[0]:.1f}s")
         tl = align_text.make_timeline(str(conversation_path))
-        index_path = Path("data") / conversation_id / "index.json"
         util.add_info_to_index(str(index_path), {"sentences": tl})
         return True
     except Exception as e:
@@ -63,6 +67,8 @@ def score_accent(conversation_id: str, sr: int = 16000) -> bool:
     try:
         with open(index_path, "r") as f:
             index_data = json.load(f)
+        index_data["action"] = "scoring"
+        util.save_info_to_file(str(index_path), index_data)
         sentences = index_data.get("sentences", [])
         if not sentences:
             logging.error("No sentences found in index.json")
@@ -118,6 +124,8 @@ def grammar_check_with_ai(conversation_id: str) -> bool:
     try:
         with open(index_path, "r") as f:
             index_data = json.load(f)
+        index_data["action"] = "checking grammar"
+        util.save_info_to_file(str(index_path), index_data)
         sentences = index_data.get("sentences", [])
         if not sentences:
             logging.error("No sentences found in index.json")
@@ -169,6 +177,15 @@ def pipeline(conversation_id: str) -> None:
         logging.error(f"Failed to check grammar for conversation {conversation_id}")
         return
     logging.info(f"Pipeline completed for conversation {conversation_id}")
+
+    index_path = Path("data") / conversation_id / "index.json"
+    try:
+        with open(index_path, "r") as f:
+            index_data = json.load(f)
+        index_data["action"] = "finished"
+        util.save_info_to_file(str(index_path), index_data)
+    except Exception as e:
+        logging.error(f"Error finalizing index.json: {e}")
 
 if __name__ == "__main__":
     # Example usage
