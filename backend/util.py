@@ -109,7 +109,7 @@ def synthesize_native(text: str, out_wav: str, engine: str = "coqui"):
     elif engine == "gtts":
         from gtts import gTTS
         tmp_mp3 = out_wav + ".mp3"
-        gTTS(text, lang="en", tld="com").save(tmp_mp3)
+        gTTS(text, lang="en", tld="com", slow=False).save(tmp_mp3)
         save_audio_to_wav(tmp_mp3, out_wav)
     elif engine == "openai":
         import openai, soundfile as sf

@@ -73,13 +73,17 @@ def score_sentence(
     if visualize and word_scores:
         labs, vals = zip(*[(w["word"], w["score"]) for w in word_scores])
         colors = ["green" if v >= .95 else "orange" if v >= .85 else "red" for v in vals]
-        plt.figure(figsize=(12, 4))
-        plt.bar(labs, vals, color=colors)
-        plt.axhline(.85, ls="--", c="gray", label="Needs improvement")
-        plt.axhline(.95, ls="--", c="blue", label="Good pronunciation")
-        plt.ylim(0, 1)
-        plt.xticks(rotation=45); plt.ylabel("Cosine similarity")
-        plt.title("Word‑by‑word pronunciation score"); plt.legend(); plt.tight_layout()
+        fig, ax = plt.subplots(figsize=(12, 4))
+        ax.bar(labs, vals, color=colors)
+        ax.axhline(.85, ls="--", c="gray", label="Needs improvement")
+        ax.axhline(.95, ls="--", c="blue", label="Good pronunciation")
+        ax.set_ylim(0, 1)
+        ax.set_xticks(range(len(labs)))
+        ax.set_xticklabels(labs, rotation=45)
+        ax.set_ylabel("Cosine similarity")
+        ax.set_title("Word‑by‑word pronunciation score")
+        ax.legend()
+        fig.tight_layout()
         plt.show()
 
     # cleanup temp file if we created one
@@ -87,3 +91,18 @@ def score_sentence(
         os.unlink(native_audio_path)
 
     return word_scores, sentence_score
+
+if __name__ == "__main__":
+    # Example usage
+    user_audio_path = "audio3.wav"  # Replace with your audio file path
+    native_audio_path = None  # Auto-generate native audio
+    sr = 16000  # Sample rate
+    tts_engine = "gtts"  # TTS engine to use
+    visualize = True  # Whether to visualize the results
+    word_scores, sentence_score = score_sentence(
+        user_audio_path=user_audio_path,
+        native_audio_path=native_audio_path,
+        sr=sr,
+        tts_engine=tts_engine,
+        visualize=visualize,
+    )

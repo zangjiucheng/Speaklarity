@@ -2,7 +2,7 @@ from torch._dynamo.polyfills import index
 import json
 import re
 
-import align_text, accent_check
+import align_text, accent_check, grammar_check
 import util
 import subprocess
 
@@ -91,6 +91,49 @@ def score_accent(
 
     return True
 
+def grammar_check_with_ai(conversation_id: str) -> bool:
+    """
+    Check grammar of the conversation using AI.
+    Returns a dictionary with grammar analysis results.
+    """
+    index_path = f"data/{conversation_id}/index.json"
+
+    with open(index_path, "r") as f:
+        index_data = json.load(f)
+    sentences = index_data.get("sentences", [])
+
+    if not sentences:
+        raise ValueError("No sentences found in index.json")
+
+    for sentence in sentences:
+        index = sentence.get("id")
+        
+        if index is None:
+            raise ValueError(f"Sentence {sentence} does not have a valid 'id' field")
+
+        # Extract text content from each sentence
+        text_content = sentence.get("sentence_text", "")
+        
+        if not text_content:
+            continue
+
+        # Check grammar with AI
+        grammar_analysis = grammar_check.analyze_grammar(text_content)
+
+        # DEBUG: Print grammar analysis for verification
+        print(f"Grammar Analysis for Sentence {index}: {grammar_analysis}")
+        
+        # Save scores to index.json
+        # Find the sentence with matching 'id' == index and update scores
+        for s in index_data["sentences"]:
+            if s.get("id") == index:
+                s["grammar_analysis"] = grammar_analysis
+                break
+
+    util.save_info_to_file(index_path, index_data)
+
+    return True
+
 def pipeline(conversation_id: str) -> None:
     """
     Process the conversation by splitting it into sentences and scoring each sentence.
@@ -104,8 +147,12 @@ def pipeline(conversation_id: str) -> None:
     if not score_accent(conversation_id):
         raise RuntimeError(f"Failed to score accent for conversation {conversation_id}")
 
+    if not grammar_check_with_ai(conversation_id):
+        raise RuntimeError(f"Failed to check grammar for conversation {conversation_id}")
+
 if __name__ == "__main__":
     # Example usage
-    conversation_id = "644bebe899c244f5"  # Replace with your conversation ID
-    split_conversation_to_sentences(conversation_id)
-    score_accent(conversation_id, sr=16000)
+    conversation_id = "6aa7a6d200024c5c"  # Replace with your conversation ID
+    # split_conversation_to_sentences(conversation_id)
+    # score_accent(conversation_id, sr=16000)
+    # grammar_check_with_ai(conversation_id)
