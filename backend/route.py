@@ -113,7 +113,7 @@ def list_audio():
             action = meta.get("action", "error")
             current_action, total_actions = map_state(action) 
             out.append({"action": action, "total_actions": total_actions, "summary": summary,
-                        "actions_done": current_action, "conversation_id": meta["conversation_id"],})
+                        "actions_done": current_action, "id": meta["conversation_id"],})
     return out
 
 @app.route("/delete-conversation/<conv_id>", methods=["DELETE"])
@@ -144,58 +144,15 @@ def download_conversation(conv_id: str):
         abort(404, "Audio file not found")
     return send_from_directory(folder, stored_file, as_attachment=True, mimetype="audio/wav")
 
-
-@app.route("/raw/<conv_id>")
-def get_raw(conv_id: str):
+@app.route("/conv/<conv_id>", methods=["GET"])
+def get_conversation(conv_id: str):
     folder = UPLOAD_ROOT / conv_id
     if not folder.exists():
-        abort(404, "conversation id not found")
+        abort(404, "Conversation ID not found")
 
     meta = json.loads((folder / "index.json").read_text())
-    return send_from_directory(folder, meta["stored_as"], mimetype="audio/wav")
 
-
-# ----------------- accent / grammar demo stubs ------------------------------
-
-@app.route("/accent-check/<conv_id>")
-def accent_check(conv_id):
-    # TODO: real analysis; here’s a placeholder
-    return [
-        {"start": 0.5, "end": 1.3, "accent_id": 0},
-        {"start": 2.0, "end": 2.7, "accent_id": 1},
-    ]
-
-
-@app.route("/accent/<conv_id>/<int:accent_id>")
-def correct_accent(conv_id, accent_id):
-    demo = {(0, 0): "accent_demo_0.wav"}  # look up your real file…
-    key = (int(conv_id, 16) % 2, accent_id)  # arbitrary mapping example
-    fname = demo.get(key)
-    if not fname:
-        abort(404)
-    accent_dir = Path("assets/accents")
-    return send_from_directory(str(accent_dir), fname, mimetype="audio/wav")
-
-
-@app.route("/grammar-check/<conv_id>")
-def grammar_check(conv_id):
-    return [
-        {"start": 1.0, "end": 2.0, "grammar_id": 0},
-        {"start": 3.0, "end": 4.0, "grammar_id": 1},
-    ]
-
-
-@app.route("/grammar/<int:grammar_id>")
-def correct_grammar(grammar_id):
-    data = {
-        0: {"sentence": "This is the correct sentence one.", "audio": "g1.wav"},
-        1: {"sentence": "This is the correct sentence two.", "audio": "g2.wav"},
-    }
-    item = data.get(grammar_id)
-    if not item:
-        abort(404)
-    return item    # just JSON; add `/grammar/<id>/audio` to send file
-
+    return jsonify(meta)
 
 # ---------- main ------------------------------------------------------------
 

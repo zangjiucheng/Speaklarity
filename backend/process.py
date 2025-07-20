@@ -3,9 +3,11 @@ import re
 import os
 from pathlib import Path
 import logging
-import align_text, accent_check, grammar_check
+import align_text, accent_check, grammar_check_gemini, grammar_check_openai
 import util
 import subprocess
+
+GRAMMAR_CHECK_AI = os.getenv("GRAMMAR_CHECK_AI", "gemini").lower()
 
 # Setup logging
 logging.basicConfig(
@@ -138,7 +140,13 @@ def grammar_check_with_ai(conversation_id: str) -> bool:
             text_content = sentence.get("sentence_text", "")
             if not text_content:
                 continue
-            grammar_analysis = grammar_check.analyze_grammar(text_content)
+            if GRAMMAR_CHECK_AI == "gemini":
+                grammar_analysis = grammar_check_gemini.analyze_grammar(text_content)
+            elif GRAMMAR_CHECK_AI == "openai":
+                grammar_analysis = grammar_check_openai.analyze_grammar(text_content)
+            else:
+                logging.error(f"Unsupported grammar check AI: {GRAMMAR_CHECK_AI}")
+                return False
             logging.info(f"Grammar Analysis for Sentence {index}: {grammar_analysis}")
             for s in index_data["sentences"]:
                 if s.get("id") == index:
