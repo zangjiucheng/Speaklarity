@@ -69,12 +69,16 @@ export const ConversationPage = (
             setSentenceScore(null);
             return;
         }
-        // Find the sentence that matches the current time
-        const currentSentence = props.recAnalysis.sentences.find(
+        // Find all sentences that match the current time (overlap)
+        const overlapping = props.recAnalysis.sentences.filter(
             (sentence) =>
                 sentence.audio_timeline.start <= currentTimeSecond &&
                 sentence.audio_timeline.end >= currentTimeSecond
         );
+        // Pick the one with the latest start time if overlaps
+        const currentSentence = overlapping.length > 0
+            ? overlapping.reduce((latest, s) => s.audio_timeline.start > latest.audio_timeline.start ? s : latest, overlapping[0])
+            : null;
         if (currentSentence) {
             setSentenceScore(currentSentence.sentence_score);
         } else {
@@ -87,11 +91,19 @@ export const ConversationPage = (
         const handleArrow = (evt: KeyboardEvent) => {
             if (!props.recAnalysis) return;
             if (evt.key === 'ArrowLeft' || evt.key === 'ArrowRight') {
-                const sentences = props.recAnalysis.sentences;
-                const idx = sentences.findIndex(s =>
+                // Sort sentences by start time
+                const sentences = [...props.recAnalysis.sentences].sort((a, b) => a.audio_timeline.start - b.audio_timeline.start);
+                // Find all overlapping at current time
+                const overlapping = sentences.filter(s =>
                     s.audio_timeline.start <= currentTimeSecond &&
                     s.audio_timeline.end >= currentTimeSecond
                 );
+                // Pick the one with the latest start time
+                const current = overlapping.length > 0
+                    ? overlapping.reduce((latest, s) => s.audio_timeline.start > latest.audio_timeline.start ? s : latest, overlapping[0])
+                    : null;
+                // Find index by start time
+                const idx = current ? sentences.findIndex(s => s === current) : -1;
                 let newIdx = idx;
                 if (evt.key === 'ArrowLeft') {
                     newIdx = Math.max(0, idx === -1 ? 0 : idx - 1);
@@ -123,6 +135,8 @@ export const ConversationPage = (
                         <div className="flex flex-col h-full w-full">
                             <div className="shrink-0 px-8 py-4">
                                 <div className={'border px-3 py-1 rounded-xl'} ref={containerRef}/>
+                            </div>
+                            <div className="px-8 pb-1">
                                 <p>
                                     <span className="font-semibold">Current Time:</span> {currentTimeString}
                                     {sentenceScore !== null && <>
@@ -136,8 +150,7 @@ export const ConversationPage = (
                                                 ))
                                             }
                                         </span>
-                                    </>
-                                    }
+                                    </>}
                                 </p>
                             </div>
                             <div className="flex-1 overflow-auto px-8 pb-8 pt-4">
