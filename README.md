@@ -6,7 +6,6 @@
 
 ## Features
 
-
 - **Real-time Audio Recording & Analysis** – Capture and review daily conversations directly in your browser, enabling users to reflect on and improve their spoken communication habits.
 - **Advanced Accent Correction** – Local, privacy-preserving accent analysis powered by word-by-word vector embeddings (WavLM + Whisper), delivering high-confidence, granular feedback on pronunciation accuracy.
 - **Grammar Checking** – Automated grammar review of daily speech using state-of-the-art language models, helping users identify and correct common mistakes in real-world conversations.
@@ -38,6 +37,13 @@
 
     # Install Python dependencies
     pip install -r requirements.txt
+
+    # Set environment variables in .env file
+    # Copy .env.example to .env and fill in your API keys
+    cp .env.example .env
+
+    # Fill in your API keys in .env file
+    GEMINI_API_KEY="your_gemini_api_key"
 
     # Install FFmpeg (required for audio processing)
     # Windows (using winget):
