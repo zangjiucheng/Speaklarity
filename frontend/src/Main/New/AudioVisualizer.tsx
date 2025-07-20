@@ -1,4 +1,4 @@
-import {useRef, useEffect} from 'react';
+import { useRef, useEffect } from 'react';
 
 type AudioVisualizerProps = {
     width?: number;
@@ -62,51 +62,69 @@ export default function AudioVisualizer({
     }
     
     useEffect(() => {
-        let intervalId: number;
-        let stream: MediaStream;
-        
+        let intervalId: number | null = null;
+        let stream: MediaStream | null = null;
+        let src: MediaStreamAudioSourceNode | null = null;
+        let ctx: AudioContext | undefined;
+        let cleanup = false;
+
         (async () => {
-            stream = await navigator.mediaDevices.getUserMedia({audio: true});
-            const C = window.AudioContext || (window as any).webkitAudioContext;
-            audioCtxRef.current = new C();
-            analyserRef.current = audioCtxRef.current.createAnalyser();
-            analyserRef.current.fftSize = 2048;
-            dataArrRef.current = new Uint8Array(analyserRef.current.fftSize);
-            
-            const src = audioCtxRef.current.createMediaStreamSource(stream);
-            src.connect(analyserRef.current);
-            
-            const ctx = canvasRef.current!.getContext('2d')!;
-            const centerY = height / 2;
-            const hist = historyRef.current;
-            const radius = Math.max(0, barWidth / 2);
-            
-            intervalId = window.setInterval(() => {
-                // write into ring buffer
-                hist[writeIdxRef.current] = sampleAudioRMS();
-                writeIdxRef.current = (writeIdxRef.current + 1) % histLen;
-                
-                // clear canvas
-                ctx.fillStyle = backgroundColor!;
-                ctx.fillRect(0, 0, width!, height);
-                
-                // draw visual
-                ctx.fillStyle = waveformColor!;
-                for (let i = 0; i < histLen; i++) {
-                    const idx = (writeIdxRef.current + i) % histLen;
-                    const scaled = Math.pow(hist[idx] / centerY, nonlinearExponent!) * centerY;
-                    const barH = scaled * 2;
-                    const x = i * (barWidth + barGap);
-                    const y = centerY - scaled;
-                    drawPill(ctx, x, y, barWidth, barH, radius);
-                }
-            }, updateIntervalMs);
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const C = window.AudioContext || (window as any).webkitAudioContext;
+                ctx = new C();
+                audioCtxRef.current = ctx;
+                analyserRef.current = ctx.createAnalyser();
+                analyserRef.current.fftSize = 2048;
+                dataArrRef.current = new Uint8Array(analyserRef.current.fftSize);
+
+                src = ctx.createMediaStreamSource(stream);
+                src.connect(analyserRef.current);
+
+                const canvasCtx = canvasRef.current!.getContext('2d')!;
+                const centerY = height / 2;
+                const hist = historyRef.current;
+                const radius = Math.max(0, barWidth / 2);
+
+                intervalId = window.setInterval(() => {
+                    if (cleanup) return;
+                    // write into ring buffer
+                    hist[writeIdxRef.current] = sampleAudioRMS();
+                    writeIdxRef.current = (writeIdxRef.current + 1) % histLen;
+
+                    // clear canvas
+                    canvasCtx.fillStyle = backgroundColor!;
+                    canvasCtx.fillRect(0, 0, width!, height);
+
+                    // draw visual
+                    canvasCtx.fillStyle = waveformColor!;
+                    for (let i = 0; i < histLen; i++) {
+                        const idx = (writeIdxRef.current + i) % histLen;
+                        const scaled = Math.pow(hist[idx] / centerY, nonlinearExponent!) * centerY;
+                        const barH = scaled * 2;
+                        const x = i * (barWidth + barGap);
+                        const y = centerY - scaled;
+                        drawPill(canvasCtx, x, y, barWidth, barH, radius);
+                    }
+                }, updateIntervalMs);
+            } catch (e) {
+                // Optionally handle error
+            }
         })();
-        
+
         return () => {
-            clearInterval(intervalId);
-            audioCtxRef.current?.close();
-            stream?.getTracks().forEach((t) => t.stop());
+            cleanup = true;
+            if (intervalId !== null) clearInterval(intervalId);
+            if (audioCtxRef.current) {
+                audioCtxRef.current.close();
+                audioCtxRef.current = undefined;
+            }
+            if (stream) {
+                stream.getTracks().forEach((t) => t.stop());
+            }
+            if (src) {
+                try { src.disconnect(); } catch {}
+            }
         };
     }, [width, height, backgroundColor, waveformColor, nonlinearExponent]);
     
