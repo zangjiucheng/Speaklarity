@@ -35,14 +35,6 @@ def new_conv_folder() -> Path:
 def save_metadata(folder: Path, meta: dict) -> None:
     (folder / "index.json").write_text(json.dumps(meta, indent=2))
 
-def get_summary(text: str, max_length: int = 100) -> str:
-    """
-    Returns a summary of the text, truncated to max_length characters.
-    """
-    if len(text) <= max_length:
-        return text
-    return text[:max_length] + "..."
-
 def map_state(action_id: str) -> tuple[int, int]:
     """
     Maps the action ID to a human-readable state.
@@ -117,10 +109,10 @@ def list_audio():
         if meta_file.exists():
             meta = json.loads(meta_file.read_text())
             # summary = save_metadata_from_json(meta.get("sentence_text", ""))
-            summary = ""
+            summary = meta.get("summary", "")
             action = meta.get("action", "error")
             current_action, total_actions = map_state(action) 
-            out.append({"action": action, "total_actions": total_actions,
+            out.append({"action": action, "total_actions": total_actions, "summary": summary,
                         "actions_done": current_action, "conversation_id": meta["conversation_id"],})
     return out
 
@@ -134,6 +126,23 @@ def delete_conversation(conv_id: str):
     shutil.rmtree(folder)
 
     return jsonify({"message": "Conversation deleted successfully"}), 200
+
+@app.route("/download-conversation/<conv_id>", methods=["GET"])
+def download_conversation(conv_id: str):
+    folder = UPLOAD_ROOT / conv_id
+    if not folder.exists():
+        abort(404, "Conversation ID not found")
+
+    meta = json.loads((folder / "index.json").read_text())
+    stored_file = None
+    # Try to find the actual stored file in the folder
+    for f in folder.iterdir():
+        if f.is_file() and f.name.startswith("conversation_"):
+            stored_file = f.name
+            break
+    if not stored_file:
+        abort(404, "Audio file not found")
+    return send_from_directory(folder, stored_file, as_attachment=True, mimetype="audio/wav")
 
 
 @app.route("/raw/<conv_id>")

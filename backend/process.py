@@ -183,6 +183,9 @@ def pipeline(conversation_id: str) -> None:
         with open(index_path, "r") as f:
             index_data = json.load(f)
         index_data["action"] = "finished"
+        index_data["summary"] = " ".join(
+            s.get("sentence_text", "") for s in index_data.get("sentences", [])
+        )[:50] # Truncate to 50 characters
         util.save_info_to_file(str(index_path), index_data)
     except Exception as e:
         logging.error(f"Error finalizing index.json: {e}")

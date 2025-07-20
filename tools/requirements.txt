@@ -1,0 +1,14 @@
+# YouTube Audio Extractor Requirements
+# Install with: pip install -r requirements.txt
+
+yt-dlp>=2023.12.30
+pydub>=0.25.1
+ffmpeg-python>=0.2.0
+
+# Note: You also need to install FFmpeg separately
+# Windows: Download from https://ffmpeg.org/download.html
+# Or use chocolatey: choco install ffmpeg
+# Or use winget: winget install ffmpeg
+
+# Alternative installation methods:
+# conda install -c conda-forge yt-dlp pydub ffmpeg

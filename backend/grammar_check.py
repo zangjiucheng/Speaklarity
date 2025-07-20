@@ -1,15 +1,16 @@
 import json
 from pathlib import Path
 import requests
-from openai import OpenAI
+from google import genai
+from google.genai import types
 from typing import Dict, Any, List
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# OpenAI API configuration
-# You'll need to set your OpenAI API key as an environment variable: OPENAI_API_KEY
-# or set it directly: client = OpenAI(api_key="your-api-key-here")
+# Google Gemini API configuration
+# You'll need to set your Gemini API key as an environment variable: GEMINI_API_KEY
+# Get your free API key from: https://aistudio.google.com/app/apikey
 
 def read_text_from_file(file_path: str) -> str:
     """
@@ -31,14 +32,14 @@ def read_text_from_file(file_path: str) -> str:
 
 def check_grammar_with_ai(text: str) -> Dict[str, Any]:
     """
-    Uses OpenAI GPT to analyze grammar and provide corrections.
+    Uses Google Gemini to analyze grammar and provide corrections.
     
     :param text: The text to analyze
     :return: Dictionary containing grammar analysis results
     """
     try:
-        # Initialize OpenAI client
-        client = OpenAI()
+        # Initialize Gemini client (API key from environment variable GEMINI_API_KEY)
+        client = genai.Client()
         
         # Set up the prompt for grammar analysis
         prompt = f"""
@@ -50,28 +51,38 @@ def check_grammar_with_ai(text: str) -> Dict[str, Any]:
         {{
             "is_grammatically_correct": true/false,  
             "corrected_text": "corrected version of the text",
-            "overall_feedback": "general feedback about the grammar and tell the user clearly if where is the grammar issues"
+            "overall_feedback": "general feedback about the grammar and tell the user clearly where the grammar issues are"
         }}
         
-        If the text is grammatically correct, return an empty issues array.
+        If the text is grammatically correct, set is_grammatically_correct to true and provide the original text as corrected_text.
+        Be specific about any grammar issues found.
         """
         
-        # Make API call to OpenAI
-        response = client.chat.completions.create(
-            model="gpt-4",  # You can also use "gpt-4" for better results
-            messages=[
-                {"role": "system", "content": "You are a professional English grammar expert. Provide accurate grammar analysis and corrections in the specified JSON format."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.1,  # Low temperature for more consistent results
-            max_tokens=1000
+        # Make API call to Gemini
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",  # Using the latest Gemini model
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                temperature=0.1,  # Low temperature for more consistent results
+                thinking_config=types.ThinkingConfig(thinking_budget=0)  # Disable thinking for speed
+            )
         )
         
         # Extract the response content
-        response_text = response.choices[0].message.content
+        response_text = response.text
         
         # Try to parse the JSON response
         try:
+            # Clean the response text to extract JSON
+            if "```json" in response_text:
+                json_start = response_text.find("```json") + 7
+                json_end = response_text.find("```", json_start)
+                response_text = response_text[json_start:json_end].strip()
+            elif "```" in response_text:
+                json_start = response_text.find("```") + 3
+                json_end = response_text.rfind("```")
+                response_text = response_text[json_start:json_end].strip()
+            
             result = json.loads(response_text)
             return result
         except json.JSONDecodeError:
@@ -86,7 +97,7 @@ def check_grammar_with_ai(text: str) -> Dict[str, Any]:
         return {
             "is_grammatically_correct": False,
             "corrected_text": "",
-            "overall_feedback": f"Error analyzing grammar: {str(e)}"
+            "overall_feedback": f"Error analyzing grammar with Gemini: {str(e)}"
         }
 
 

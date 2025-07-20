@@ -1,6 +1,7 @@
 dotenv==0.9.9
 Flask==3.1.1
 flask-cors==6.0.1
+google-genai==1.26.0
 gTTS==2.5.4
 librosa==0.11.0
 matplotlib==3.10.3
