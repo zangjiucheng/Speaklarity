@@ -87,6 +87,7 @@
 - `DELETE /delete-conversation/<id>`: Delete a conversation and all its associated files by ID.
 - `GET /download-conversation/<id>`: Download the original audio file for a conversation by ID.
 - `GET /conv/<id>`: Retrieve metadata and processing status for a specific conversation.
+- `GET /native-reference/<conv_id>/<sentence_id>`: Download the native reference audio for a specific sentence in a conversation. Returns a `.wav` file for direct listening or download.
 
 ## Technology Stack
 

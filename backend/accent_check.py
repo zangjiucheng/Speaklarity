@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import util
 
 device: str = "cpu"
-whisper_model = whisper.load_model("small.en", device=device)
+whisper_model = whisper.load_model("base.en", device=device)
 
 
 # --- Audio Preprocessing ---
@@ -25,8 +25,8 @@ def preprocess_wav(path, sr, cutoff=80, target_rms=0.1):
     wav = normalize_rms(wav, target_rms)
 
     # Save the processed waveform to a temporary WAV file for inspection/debugging
-    temp_wav_path = path.replace(".wav", "_processed.wav")
-    torchaudio.save(temp_wav_path, wav, sr)
+    # temp_wav_path = path.replace(".wav", "_processed.wav")
+    # torchaudio.save(temp_wav_path, wav, sr)
     return wav
 
 # --------------- main scorer -----------------
