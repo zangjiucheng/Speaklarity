@@ -1,6 +1,7 @@
 import type {ProcessingState, RecordingAnalysis} from './api.types.ts';
 
-export const API_BASE_URL = 'http://100.66.178.24:9000';
+// export const API_BASE_URL = 'http://100.66.178.24:9000';
+export const API_BASE_URL = 'http://localhost:9000';
 
 export async function callAPI(
     endpoint: string,
