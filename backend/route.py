@@ -11,6 +11,7 @@ from process import pipeline
 from util import save_audio_to_wav
 import threading
 import shutil
+from flask_socketio import SocketIO, emit
 
 UPLOAD_ROOT = Path("data")
 ALLOWED_EXT = {".wav"}
@@ -19,6 +20,11 @@ MAX_BYTES   = 25 * 1024 * 1024          # 25 MB per file
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = MAX_BYTES
 CORS(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
+
+@socketio.on('connect')
+def handle_connect():
+    emit('status', {'message': 'Socket connection established'})
 
 
 # ---------- helpers ---------------------------------------------------------
@@ -85,7 +91,7 @@ def upload_conversation():
 
     # Save metadata in index.json inside the conversation_id folder
     index_path = folder / "index.json"
-    metadata = {
+    metadata: dict[str, str] = {
         "conversation_id": cid,
         "filename": original,
         "sha256": h,
@@ -95,8 +101,14 @@ def upload_conversation():
 
     save_metadata(folder, metadata)
 
+    socketio.emit("status", {
+        "conversation_id": cid,
+        "action": "uploading",
+        "message": "File uploaded successfully, starting processing..."
+    })
+
     # Run pipeline in a background thread so it doesn't block the request
-    threading.Thread(target=pipeline, args=(cid,), daemon=True).start()
+    threading.Thread(target=pipeline, args=(cid,socketio), daemon=True).start()
 
     return metadata, 201
 
@@ -124,6 +136,12 @@ def delete_conversation(conv_id: str):
     
     # Remove the entire conversation folder and its contents recursively
     shutil.rmtree(folder)
+
+    socketio.emit("status", {
+        "conversation_id": conv_id,
+        "action": "deleted",
+        "message": f"Conversation {conv_id} deleted successfully."
+    })
 
     return jsonify({"message": "Conversation deleted successfully"}), 200
 
@@ -180,4 +198,5 @@ def get_conversation(conv_id: str):
 
 if __name__ == "__main__":
     UPLOAD_ROOT.mkdir(exist_ok=True)
-    app.run(host="0.0.0.0", port=9000, debug=False)
+    # socketio.run(app, host="0.0.0.0", port=9000, debug=False)
+    socketio.run(app, port=9000, debug=False, allow_unsafe_werkzeug=True)

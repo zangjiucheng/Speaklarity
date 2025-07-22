@@ -6,14 +6,23 @@ import {IoCheckmarkCircleOutline, IoSearch} from 'react-icons/io5';
 import type {ProcessingState, RecordingAnalysis} from '../utils/api.types.ts';
 import {IoMdAddCircleOutline} from 'react-icons/io';
 import {NewRecordingPage} from './New/NewRecordingPage.tsx';
-import {downloadConversationWav, fetchRecordingAnalysis, listAudio} from '../utils/api.tools.ts';
+import {downloadConversationWav, fetchRecordingAnalysis, listAudio, removeAudio} from '../utils/api.tools.ts';
 import {ConversationPage} from './ConversationPage.tsx';
+import { io } from 'socket.io-client';
 
 
-const TaskItem = React.memo(function TaskItem({task, onClick}: {
+const TaskItem = React.memo(function TaskItem({task, onClick, onDelete}: {
     task: { id: string, summary: string, state: ProcessingState },
-    onClick: () => void
+    onClick: () => void,
+    onDelete: () => void
 }) {
+    // Right-click handler
+    const handleContextMenu = (e: React.MouseEvent) => {
+        e.preventDefault();
+        if (window.confirm('Are you sure you want to delete this recording? This action cannot be undone.')) {
+            onDelete();
+        }
+    };
     return <Tooltip color="foreground" showArrow placement="right" delay={1000} size={'sm'} content={
         <div className="px-1 py-2 max-w-[300px]">
             {task.summary.length > 128 ? task.summary.substring(0, 128) + '...' : task.summary}
@@ -21,6 +30,7 @@ const TaskItem = React.memo(function TaskItem({task, onClick}: {
     }>
         <div
             onClick={onClick}
+            onContextMenu={handleContextMenu}
             className="p-3 mb-2 rounded-lg bg-default-100 hover:bg-default-200 transition-colors hover:cursor-pointer">
             <p className="text-sm font-semibold truncate w-full max-w-full flex items-center">
                 {/* Show checkmark if finished processing */}
@@ -50,11 +60,8 @@ const TaskItem = React.memo(function TaskItem({task, onClick}: {
                 </>
             }
         </div>
-    
     </Tooltip>;
-    
 });
-
 
 export const MainWrapper = () => {
     const [search, setSearch] = useState('');
@@ -66,37 +73,6 @@ export const MainWrapper = () => {
     }[]>([]);
     const [convAnalysis, setConvAnalysis] = useState<RecordingAnalysis | undefined>(undefined);
     const [audioUrl, setAudioUrl] = useState<string | undefined>(undefined);
-    
-    // Fetch tasks from the API when the component mounts
-    useEffect(() => {
-        const fetchTasks = async () => {
-            const response = await listAudio();
-            if (response.success && response.data) {
-                setTasks(() => {
-                    return (response.data as ProcessingState[]).map((task: ProcessingState) => ({
-                        id: task.id,
-                        summary: task.summary || (task.actions_done === task.total_actions ? 'Untitled Task' : 'Processing...'),
-                        state: {
-                            id: task.id,
-                            summary: task.summary || 'Untitled Task',
-                            action: task.action || 'Processing',
-                            total_actions: task.total_actions || 1,
-                            actions_done: task.actions_done || 0
-                        }
-                    }));
-                });
-            } else {
-                console.error('Failed to fetch tasks:', response.reason);
-            }
-        };
-        fetchTasks();
-        const interval = setInterval(() => {
-            fetchTasks();
-        }, 2500);
-        return () => {
-            clearInterval(interval);
-        };
-    }, []);
     
     // Memoize filteredTasks to avoid unnecessary re-renders
     const filteredTasks = useMemo(() =>
@@ -124,6 +100,33 @@ export const MainWrapper = () => {
             });
         }
     }, [selected]);
+    
+    useEffect(() => {
+        const socket = io('http://localhost:9000');
+        socket.on('status', async () => {
+            const response = await listAudio();
+            if (response.success && response.data) {
+                setTasks(() => {
+                    return (response.data as ProcessingState[]).map((task: ProcessingState) => ({
+                        id: task.id,
+                        summary: task.summary || (task.actions_done === task.total_actions ? 'Untitled Task' : 'Processing...'),
+                        state: {
+                            id: task.id,
+                            summary: task.summary || 'Untitled Task',
+                            action: task.action || 'Processing',
+                            total_actions: task.total_actions || 1,
+                            actions_done: task.actions_done || 0
+                        }
+                    }));
+                });
+            } else {
+                console.error('Failed to fetch tasks:', response.reason);
+            }
+        });
+        return () => {
+            socket.disconnect();
+        };
+    }, []);
     
     return (
         <motion.div
@@ -187,7 +190,7 @@ export const MainWrapper = () => {
                         {filteredTasks.map(task => (
                             <TaskItem key={task.id} task={task} onClick={() => {
                                 setSelected(task.id);
-                            }}/>
+                            }} onDelete={() => removeAudio(task.id)} />
                         ))}
                         <div className="h-6"></div>
                     </ScrollShadow>

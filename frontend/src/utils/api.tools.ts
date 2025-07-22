@@ -164,3 +164,24 @@ export async function downloadNativeReference(convId: string, sentenceId: number
         return {success: false, reason: error?.message || 'Unknown error'};
     }
 }
+
+export async function removeAudio(convId: string): Promise<{ success: boolean; reason?: string }> {
+    const url = `${API_BASE_URL}/delete-conversation/${convId}`;
+    try {
+        const response = await fetch(url, {
+            method: 'DELETE',
+            headers: {
+                'Accept': 'application/json',
+            },
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            return {success: false, reason: `API error: ${response.status} ${response.statusText} - ${errorText}`};
+        }
+        
+        return {success: true};
+    } catch (error: any) {
+        return {success: false, reason: error?.message || 'Unknown error'};
+    }
+}

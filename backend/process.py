@@ -6,6 +6,7 @@ import logging
 import align_text, accent_check, grammar_check_gemini, grammar_check_openai
 import util
 import subprocess
+import socketio
 
 GRAMMAR_CHECK_AI = os.getenv("GRAMMAR_CHECK_AI", "gemini").lower()
 
@@ -19,6 +20,10 @@ logging.basicConfig(
 # Configuration via environment variables
 TTS_ENGINE = os.getenv("TTS_ENGINE", "gtts")  # Default TTS engine
 VISUALIZE = os.getenv("VISUALIZE", "False").lower() == "true"  # Default visualization setting
+
+# In your pipeline or after status changes:
+def notify_status(socketio, conv_id, status):
+    socketio.emit('status', {'id': conv_id, 'status': status})
 
 def split_conversation_to_sentences(conversation_id: str) -> bool:
     """
@@ -165,7 +170,7 @@ def grammar_check_with_ai(conversation_id: str) -> bool:
         logging.error(f"Error in grammar check: {e}")
         return False
 
-def pipeline(conversation_id: str) -> None:
+def pipeline(conversation_id: str, socketio=None):
     """
     Orchestrates the full processing pipeline for a conversation.
 
@@ -181,13 +186,21 @@ def pipeline(conversation_id: str) -> None:
     Returns:
         None
     """
+    
     logging.info(f"Starting pipeline for conversation {conversation_id}")
+    if socketio:
+        notify_status(socketio, conversation_id, "splitting")
     if not split_conversation_to_sentences(conversation_id):
         logging.error(f"Failed to process conversation {conversation_id}")
         return
+    if socketio:
+        notify_status(socketio, conversation_id, "scoring")
+    logging.info(f"Scoring accent for conversation {conversation_id}")
     if not score_accent(conversation_id):
         logging.error(f"Failed to score accent for conversation {conversation_id}")
         return
+    if socketio:
+        notify_status(socketio, conversation_id, "checking grammar")
     if not grammar_check_with_ai(conversation_id):
         logging.error(f"Failed to check grammar for conversation {conversation_id}")
         return
@@ -202,6 +215,8 @@ def pipeline(conversation_id: str) -> None:
             s.get("sentence_text", "") for s in index_data.get("sentences", [])
         )[:50] # Truncate to 50 characters
         util.save_info_to_file(str(index_path), index_data)
+        if socketio:
+            notify_status(socketio, conversation_id, "finished")
     except Exception as e:
         logging.error(f"Error finalizing index.json: {e}")
 
